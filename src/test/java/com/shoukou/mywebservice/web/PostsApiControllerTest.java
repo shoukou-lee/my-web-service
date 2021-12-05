@@ -150,11 +150,14 @@ public class PostsApiControllerTest {
     @Test
     @WithMockUser(roles="USER")
     public void 조회() throws Exception {
+        String title = "this title";
+        String content = "this content";
+        String author = "this author";
         // given
         Posts post = postsRepository.save(Posts.builder()
-                .title("title")
-                .content("content")
-                .author("author")
+                .title(title)
+                .content(content)
+                .author(author)
                 .build()
         );
 
@@ -163,16 +166,12 @@ public class PostsApiControllerTest {
 
         // when
         mvc.perform(get(readApiUrl).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().string("{" +
+                        "\"id\":" + id + "," +
+                        "\"title\":\"" + title + "\"," +
+                        "\"content\":\"" + content + "\"," +
+                        "\"author\":\"" + author + "\"" +
+                        "}"))
                 .andExpect(status().isOk());
-        /*
-        // DTO에 @NoArgsConstructor 추가해야 함
-        PostsResponseDto postsResponseDto = restTemplate.getForObject(readApiUrl, PostsResponseDto.class);
-
-        // then
-        assertThat(postsResponseDto.getId()).isEqualTo(id);
-        assertThat(postsResponseDto.getAuthor()).isEqualTo("author");
-        assertThat(postsResponseDto.getContent()).isEqualTo("content");
-        assertThat(postsResponseDto.getTitle()).isEqualTo("title");
-        */
     }
 }
