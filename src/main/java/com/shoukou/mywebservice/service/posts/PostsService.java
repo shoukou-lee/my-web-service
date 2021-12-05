@@ -38,8 +38,8 @@ public class PostsService {
     }
 
     /*
-    Q. JpaRepository.delete 또한 내부적으로 findById를 사용하지 않을까?
-    삭제할 Posts를 posts에 잡아두기 위해 한번, 삭제하기 위해 한번 DB 조회를 하는 오버헤드가 발생되지 않을까?
+    존재하는 post인지 확인하기 위해, findById로 post를 찾는다.
+    id로 삭제하기 위해서는 JpaRepository.deleteById(id)를 사용하면 된다.
      */
     @Transactional
     public void delete(Long id) {

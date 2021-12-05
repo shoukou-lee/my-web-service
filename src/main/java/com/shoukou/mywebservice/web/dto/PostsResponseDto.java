@@ -2,7 +2,9 @@ package com.shoukou.mywebservice.web.dto;
 
 import com.shoukou.mywebservice.domain.posts.Posts;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 @Getter
 public class PostsResponseDto {
     private Long id;

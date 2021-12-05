@@ -2,6 +2,7 @@ package com.shoukou.mywebservice.web;
 
 import com.shoukou.mywebservice.domain.posts.Posts;
 import com.shoukou.mywebservice.domain.posts.PostsRepository;
+import com.shoukou.mywebservice.web.dto.PostsResponseDto;
 import com.shoukou.mywebservice.web.dto.PostsSaveRequestDto;
 import com.shoukou.mywebservice.web.dto.PostsUpdateRequestDto;
 import org.junit.After;
@@ -16,8 +17,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,10 +42,8 @@ public class PostsApiControllerTest {
     }
 
     @Test
-    public void Posts_등록() throws  Exception {
+    public void 등록() throws  Exception {
         // given
-        String url = "http://localhost:" + port + "/api/v1/posts";
-
         String title = "title";
         String content = "content";
         String author = "author";
@@ -55,6 +56,7 @@ public class PostsApiControllerTest {
         // when
         // REST 서비스를 호출하는 템플릿
         // postForEntity : 주어진 url로부터 POST 요청을 받고, 결과로 ResponseEntity를 반환
+        String url = "http://localhost:" + port + "/api/v1/posts";
         ResponseEntity<Long> responseEntity = restTemplate.postForEntity(url, requestDto, Long.class);
         // then
         assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK); // 코드 200
@@ -75,14 +77,14 @@ public class PostsApiControllerTest {
     4. 요청 후 id로 조회한 엔티티의 내부 값이 변경했던 값과 같은지 확인한다.
     */
     @Test
-    public void Posts_수정() throws Exception {
+    public void 수정() throws Exception {
         // given
         Posts postsBeforeUpdate = postsRepository.save(Posts.builder()
                 .title("beforeTitle")
                 .content("beforeContent")
                 .author("beforeAuthor")
                 .build()
-        );
+            );
         Long thisId = postsBeforeUpdate.getId();
 
         PostsUpdateRequestDto requestDto = PostsUpdateRequestDto.builder()
@@ -104,5 +106,48 @@ public class PostsApiControllerTest {
         assertThat(all.get(0).getTitle()).isEqualTo("afterTitle");
         assertThat(all.get(0).getContent()).isEqualTo("afterContent");
         assertThat(all.get(0).getAuthor()).isEqualTo("beforeAuthor");
+    }
+
+    @Test
+    public void 삭제() throws Exception {
+        // given
+        Posts post = postsRepository.save(Posts.builder()
+                .title("title")
+                .content("content")
+                .author("author")
+                .build()
+            );
+        Long id = post.getId();
+        String deleteApiUrl = "http://localhost:" + port + "/api/v1/posts/" + id;
+
+        // when
+        restTemplate.delete(deleteApiUrl);
+
+        // then
+        assertThat(postsRepository.findById(id)).isEqualTo(Optional.empty());
+    }
+
+    @Test
+    public void 조회() throws Exception {
+        // given
+        Posts post = postsRepository.save(Posts.builder()
+                .title("title")
+                .content("content")
+                .author("author")
+                .build()
+        );
+
+        Long id = post.getId();
+        String readApiUrl = "http://localhost:" + port + "/api/v1/posts/" + id;
+
+        // when
+        // DTO에 @NoArgsConstructor 추가해야 함
+        PostsResponseDto postsResponseDto = restTemplate.getForObject(readApiUrl, PostsResponseDto.class);
+
+        // then
+        assertThat(postsResponseDto.getId()).isEqualTo(id);
+        assertThat(postsResponseDto.getAuthor()).isEqualTo("author");
+        assertThat(postsResponseDto.getContent()).isEqualTo("content");
+        assertThat(postsResponseDto.getTitle()).isEqualTo("title");
     }
 }
