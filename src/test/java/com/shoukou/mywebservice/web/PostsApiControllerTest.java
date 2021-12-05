@@ -1,32 +1,49 @@
 package com.shoukou.mywebservice.web;
 
+import java.util.List;
+import java.util.Optional;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shoukou.mywebservice.domain.posts.Posts;
 import com.shoukou.mywebservice.domain.posts.PostsRepository;
 import com.shoukou.mywebservice.web.dto.PostsResponseDto;
 import com.shoukou.mywebservice.web.dto.PostsSaveRequestDto;
 import com.shoukou.mywebservice.web.dto.PostsUpdateRequestDto;
+
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.http.*;
+import org.hamcrest.Matcher;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.internal.bytebuddy.matcher.ElementMatchers.is;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class PostsApiControllerTest {
+
+    @Autowired
+    private WebApplicationContext context;
+    private MockMvc mvc;
+
     @LocalServerPort
     private int port;
 
@@ -36,12 +53,21 @@ public class PostsApiControllerTest {
     @Autowired
     private PostsRepository postsRepository;
 
+    @Before
+    public void setup() {
+        mvc = MockMvcBuilders
+                .webAppContextSetup(context)
+                .apply(springSecurity())
+                .build();
+    }
+
     @After
     public void tearDown() throws Exception {
         postsRepository.deleteAll();
     }
 
     @Test
+    @WithMockUser(roles="USER") // 인증된 모의 사용자 권한을 생성
     public void 등록() throws  Exception {
         // given
         String title = "title";
@@ -54,29 +80,20 @@ public class PostsApiControllerTest {
                 .build();
 
         // when
-        // REST 서비스를 호출하는 템플릿
-        // postForEntity : 주어진 url로부터 POST 요청을 받고, 결과로 ResponseEntity를 반환
         String url = "http://localhost:" + port + "/api/v1/posts";
-        ResponseEntity<Long> responseEntity = restTemplate.postForEntity(url, requestDto, Long.class);
-        // then
-        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK); // 코드 200
-        assertThat(responseEntity.getBody()).isGreaterThan(0L);
+        mvc.perform(post(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(requestDto)))
+                .andExpect(status().isOk());
 
-        // when
-        List<Posts> all = postsRepository.findAll();
         // then
+        List<Posts> all = postsRepository.findAll();
         assertThat(all.get(0).getTitle()).isEqualTo(title);
         assertThat(all.get(0).getContent()).isEqualTo(content);
     }
 
-
-    /* 따라하기 전에 - 어떻게 구성해야 할까?
-    1. 임의의 엔티티를 생성한 후 Repository에 저장한다.
-    2. 이 엔티티의 id를 조회해서 저장한다.
-    3. 변경할 값들로 구성된 DTO를 만들고, PUT 요청을 보낸다.
-    4. 요청 후 id로 조회한 엔티티의 내부 값이 변경했던 값과 같은지 확인한다.
-    */
     @Test
+    @WithMockUser(roles="USER")
     public void 수정() throws Exception {
         // given
         Posts postsBeforeUpdate = postsRepository.save(Posts.builder()
@@ -93,15 +110,14 @@ public class PostsApiControllerTest {
                 .build();
 
         String url = "http://localhost:" + port + "/api/v1/posts/" + thisId;
-        HttpEntity<PostsUpdateRequestDto> requestEntity = new HttpEntity<>(requestDto);
 
         // when
-        ResponseEntity<Long> responseEntity = restTemplate.exchange(url, HttpMethod.PUT, requestEntity, Long.class);
+        mvc.perform(put(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(requestDto)))
+                .andExpect(status().isOk());
 
         // then
-        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(responseEntity.getBody()).isGreaterThan(0L);
-
         List<Posts> all = postsRepository.findAll();
         assertThat(all.get(0).getTitle()).isEqualTo("afterTitle");
         assertThat(all.get(0).getContent()).isEqualTo("afterContent");
@@ -109,6 +125,7 @@ public class PostsApiControllerTest {
     }
 
     @Test
+    @WithMockUser(roles="USER")
     public void 삭제() throws Exception {
         // given
         Posts post = postsRepository.save(Posts.builder()
@@ -121,13 +138,17 @@ public class PostsApiControllerTest {
         String deleteApiUrl = "http://localhost:" + port + "/api/v1/posts/" + id;
 
         // when
-        restTemplate.delete(deleteApiUrl);
+        mvc.perform(delete(deleteApiUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
         // then
         assertThat(postsRepository.findById(id)).isEqualTo(Optional.empty());
     }
 
     @Test
+    @WithMockUser(roles="USER")
     public void 조회() throws Exception {
         // given
         Posts post = postsRepository.save(Posts.builder()
@@ -141,6 +162,9 @@ public class PostsApiControllerTest {
         String readApiUrl = "http://localhost:" + port + "/api/v1/posts/" + id;
 
         // when
+        mvc.perform(get(readApiUrl).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+        /*
         // DTO에 @NoArgsConstructor 추가해야 함
         PostsResponseDto postsResponseDto = restTemplate.getForObject(readApiUrl, PostsResponseDto.class);
 
@@ -149,5 +173,6 @@ public class PostsApiControllerTest {
         assertThat(postsResponseDto.getAuthor()).isEqualTo("author");
         assertThat(postsResponseDto.getContent()).isEqualTo("content");
         assertThat(postsResponseDto.getTitle()).isEqualTo("title");
+        */
     }
 }

@@ -26,14 +26,30 @@ public class OAuthAttributes {
 
     public static OAuthAttributes of(String registrationId, String userNameAttributeName,
                                      Map<String, Object> attriutes) {
+        if ("naver".equals(registrationId)) {
+            return ofNaver("id", attriutes);
+        }
+
         return ofGoogle(userNameAttributeName, attriutes);
+    }
+
+    private static OAuthAttributes ofNaver(String userNameAttributeName, Map<String, Object> attributes) {
+        Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+
+        return OAuthAttributes.builder()
+                .name((String) response.get("name"))
+                .email((String) response.get("email"))
+                .picture((String) response.get("profile_image"))
+                .attributes(response)
+                .nameAttributeKey(userNameAttributeName)
+                .build();
     }
 
     private static OAuthAttributes ofGoogle(String userNameAttributeName, Map<String, Object> attributes) {
         return OAuthAttributes.builder()
-                .name((String)attributes.get("name"))
-                .email((String)attributes.get("email"))
-                .picture((String)attributes.get("picture"))
+                .name((String) attributes.get("name"))
+                .email((String) attributes.get("email"))
+                .picture((String) attributes.get("picture"))
                 .attributes(attributes)
                 .nameAttributeKey(userNameAttributeName)
                 .build();
@@ -44,7 +60,7 @@ public class OAuthAttributes {
                 .name(name)
                 .email(email)
                 .picture(picture)
-                .role(Role.GUEST)
+                .role(Role.USER) // 로그인으로 회원이 등록되면 바로 USER 권한을 얻을 수 있도록 수정
                 .build();
     }
 }

@@ -1,5 +1,6 @@
 package com.shoukou.mywebservice.web;
 
+import com.shoukou.mywebservice.config.auth.LoginUser;
 import com.shoukou.mywebservice.config.auth.dto.SessionUser;
 import com.shoukou.mywebservice.service.posts.PostsService;
 import com.shoukou.mywebservice.web.dto.PostsResponseDto;
@@ -18,11 +19,11 @@ public class IndexController {
     private final HttpSession httpSession;
 
     // Model : 서버 템플릿 엔진에서 사용할 수 있는 객체를 저장
+    // @LoginUser 어노테이션으로 User 세션 정보를 가져온다.
     @GetMapping("/")
-    public String index(Model model) {
+    public String index(Model model, @LoginUser SessionUser user) {
         model.addAttribute("posts", postsService.findAllDesc());
 
-        SessionUser user = (SessionUser) httpSession.getAttribute("user");
         if (user != null) {
             model.addAttribute("userName", user.getName());
         }
